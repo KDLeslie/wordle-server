@@ -20,7 +20,7 @@ namespace wordle_server
     {
         [FunctionName("CheckGuess")]
         public static async Task<IActionResult> RunCheckGuess(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -37,7 +37,7 @@ namespace wordle_server
 
         [FunctionName("GetAnswer")]
         public static async Task<IActionResult> RunGetAnswer(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -50,7 +50,7 @@ namespace wordle_server
 
         [FunctionName("ValidateGuess")]
         public static async Task<IActionResult> RunValidateGuess(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
             // Read the request body
