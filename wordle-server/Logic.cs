@@ -10,7 +10,7 @@ namespace wordle_server
     {
         public static string[] GetFeedBack(string guess, string answer)
         {
-            string[] Colours = new string[5];
+            string[] colours = new string[5];
             if (guess == answer)
             {
                 return  new string[5] { "green", "green", "green", "green", "green" };
@@ -30,30 +30,31 @@ namespace wordle_server
             {
                 if (guess[i] == answer[i])
                 {
-                    Colours[i] = "green";
+                    colours[i] = "green";
                     lettersLeft[guess[i]]--;
                 }
                 else if (lettersLeft.ContainsKey(guess[i]) && lettersLeft[guess[i]] != 0)
                 {
-                    Colours[i] = "yellow";
+                    colours[i] = "yellow";
                     lettersLeft[guess[i]]--;
                 }
                 else
                 {
-                    Colours[i] = "grey";
+                    colours[i] = "grey";
                 }
             }
 
-            // Fixing bug where letter count is negative
+            // Hack to fix bug where yellows should be grey if a duplicate letter is alredy in corrrect spot
+            // (ex: guessing harsh when answer is flush had the first letter be ? and not x)
             for (int i = 0; i < 5; i++)
             {
                 if (lettersLeft.ContainsKey(guess[i]) && lettersLeft[guess[i]] < 0)
                 {
-                    Colours[i] = "grey";
+                    colours[i] = "grey";
                     lettersLeft[guess[i]]++;
                 }
             }
-            return Colours;
+            return colours;
         }
     }
 }

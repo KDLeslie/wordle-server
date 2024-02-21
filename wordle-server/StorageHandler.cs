@@ -20,20 +20,19 @@ namespace wordle_server
         static readonly string validWordsStorageName = "valid-wordle-words.txt";
         static readonly string possibleAnswersStorageName = "answerlist.txt";
 
-        public static CloudTable getTable(string tableName)
+        public static CloudTable GetTable(string tableName)
         {
-            // Create or retrieve the CloudTable instance
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
             return tableClient.GetTableReference(tableName);
         }
-        public static async Task<CloudTable> getOrCreateTable(string tableName)
+        public static async Task<CloudTable> GetOrCreateTable(string tableName)
         {
-            CloudTable table = getTable(tableName);
+            CloudTable table = GetTable(tableName);
             await table.CreateIfNotExistsAsync();
             return table;
         }
-        public static CloudBlockBlob getBlockBlob(string containerName, string blobName) 
+        public static CloudBlockBlob GetBlockBlob(string containerName, string blobName) 
         {
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
@@ -42,59 +41,49 @@ namespace wordle_server
             return blob;
         }
 
-        public static async Task<HashSet<string>> getValidWords()
+        public static async Task<HashSet<string>> GetValidWords()
         {
-            CloudBlockBlob blob = getBlockBlob(containerName, validWordsStorageName);
+            CloudBlockBlob blob = GetBlockBlob(containerName, validWordsStorageName);
             string blobText = await blob.DownloadTextAsync();
             string[] words = blobText.Split(new string[] { "\n" }, StringSplitOptions.None);
             HashSet<string> hashSet = new HashSet<string>(words);
             return hashSet;
 
         }
-        public static async Task<string> getAnswer(string id)
+        public static async Task<string> GetAnswer(string id)
         {
-            CloudTable table = getTable(tableName);
-            await table.CreateIfNotExistsAsync();
+            CloudTable table = GetTable(tableName);
 
-            TableOperation retrieveOperation = TableOperation.Retrieve<MyEntity>(id, id);
+            TableOperation retrieveOperation = TableOperation.Retrieve<SessionEntity>(id, id);
             TableResult result = await table.ExecuteAsync(retrieveOperation);
-            MyEntity entity = (MyEntity)result.Result;
+            SessionEntity entity = (SessionEntity)result.Result;
             return entity.Word;
         }
-        public static async Task storeSession(string id)
+        public static async Task StoreSession(string id)
         {
-
-            CloudBlockBlob blob = getBlockBlob(containerName, possibleAnswersStorageName);
-            CloudTable table = getTable(tableName);
-            await table.CreateIfNotExistsAsync();
+            CloudBlockBlob blob = GetBlockBlob(containerName, possibleAnswersStorageName);
+            CloudTable table = await GetOrCreateTable(tableName);
 
             string blobText = await blob.DownloadTextAsync();
-
             string[] words = blobText.Split(new string[] { "\n" }, StringSplitOptions.None);
 
             Random rnd = new Random();
             int i = rnd.Next(0, words.Length);
             string word = words[i];
 
-
-            // Create a new entity to be inserted into the table
-            MyEntity entity = new MyEntity
+            SessionEntity entity = new SessionEntity
             {
-                PartitionKey = id, // Your partition key
-                RowKey = id, // Unique row key
-                Word = word, // Replace with your property names
+                PartitionKey = id,
+                RowKey = id,
+                Word = word,
             };
 
-            // Create the TableOperation that inserts the entity
             TableOperation insertOperation = TableOperation.Insert(entity);
-
-            // Execute the insert operation
             await table.ExecuteAsync(insertOperation);
         }
-        public class MyEntity : TableEntity
+        public class SessionEntity : TableEntity
         {
             public string Word { get; set; }
         }
-
     }
 }
