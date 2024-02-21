@@ -24,15 +24,11 @@ namespace wordle_server
             ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            Guess data = JsonConvert.DeserializeObject<Guess>(requestBody);
-            string guess = new string(data.Chars);
-            string answer = await StorageHandler.getAnswer(data.Token);
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            string guess = new string(data.Word);
+            string answer = await StorageHandler.GetAnswer(data.SessionToken);
 
-
-            FeedBack feedBack = new FeedBack();
-            feedBack.Colours = Logic.GetFeedBack(guess, answer);
-
-            return new OkObjectResult(feedBack);
+            return new OkObjectResult(new {colours = Logic.GetFeedBack(guess, answer)});
         }
 
         [FunctionName("GetAnswer")]
@@ -41,11 +37,9 @@ namespace wordle_server
         ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            Guess data = JsonConvert.DeserializeObject<Guess>(requestBody);
-            Answer answer = new Answer();
-            answer.Word =  await StorageHandler.getAnswer(data.Token);
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
 
-            return new OkObjectResult(answer);
+            return new OkObjectResult(new {word = await StorageHandler.GetAnswer(data.SessionToken)});
         }
 
         [FunctionName("ValidateGuess")]
@@ -53,15 +47,13 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            // Read the request body
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            Word data = JsonConvert.DeserializeObject<Word>(requestBody);
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            string guess = new string(data.Word);
 
-            HashSet<string> hashSet = await StorageHandler.getValidWords();
-            ValidWord validWord = new ValidWord();
-            validWord.Valid = hashSet.Contains(new string(data.Chars));
+            HashSet<string> hashSet = await StorageHandler.GetValidWords();
 
-            return new OkObjectResult(validWord);
+            return new OkObjectResult(new {valid = hashSet.Contains(guess)});
         }
 
 
@@ -70,46 +62,17 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            // Read the request body
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            SessionToken data = JsonConvert.DeserializeObject<SessionToken>(requestBody);
-            await StorageHandler.storeSession(data.Token);
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            await StorageHandler.StoreSession(data.SessionToken);
 
-            return new OkObjectResult($"Gucci.");
+            return new OkObjectResult(new {success = true});
         }
     }
-    public class Answer
-    {
-        public string Word { get; set; }
-    }
 
-    public class ValidWord
+    public class Request
     {
-        public bool Valid { get; set; }
-    }
-
-    public class Word
-    {
-        public char[] Chars {  get; set; }
-    }
-
-    public class FeedBack
-    {
-        public string[] Colours { get; set; }
-    }
-
-    public class WordEntity : TableEntity
-    {
-        public string Word { get; set; }
-    }
-    public class SessionToken
-    {
-        public string Token { get; set;}
-    }
-    public class Guess
-    {
-        public char[] Chars { get; set; }
-        public string Token { get; set; }
-
+        public char[] Word { get; set; }
+        public string SessionToken { get; set; }
     }
 }
