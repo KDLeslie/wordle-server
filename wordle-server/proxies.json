@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json.schemastore.org/proxies",
+  "proxies": {
+    "IndexProxy": {
+      "matchCondition": {
+        "route": "/ui/",
+        "methods": [
+          "GET",
+          "OPTIONS",
+          "HEAD"
+        ]
+      },
+      "backendUri": "%CLIENT_LOCATION%/index.html"
+    },
+    "ClientProxy": {
+      "matchCondition": {
+        "route": "/ui/{*all}",
+        "methods": [
+          "GET",
+          "OPTIONS",
+          "HEAD"
+        ]
+      },
+      "backendUri": "%CLIENT_LOCATION%/{all}"
+    },
+
+    "rootRedirector": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/"
+      },
+      "responseOverrides": {
+        "response.statusCode": "301",
+        "response.headers.Location": "/ui/"
+      }
+    },
+    "uiRedirector": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/ui"
+      },
+      "responseOverrides": {
+        "response.statusCode": "301",
+        "response.headers.Location": "/ui/index.html"
+      }
+    }
+  }
+}

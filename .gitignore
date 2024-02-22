@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/wordle-server/Properties/ServiceDependencies/wordle-server-dev - Zip Deploy
+/wordle-server/Properties/serviceDependencies.json
+/wordle-server/Properties/serviceDependencies.wordle-server-dev - Zip Deploy.json
