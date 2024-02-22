@@ -59,7 +59,7 @@ namespace wordle_server
 
         [FunctionName("SetSession")]
         public static async Task<IActionResult> RunSetSession(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
