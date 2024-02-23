@@ -364,3 +364,7 @@ FodyWeavers.xsd
 /wordle-server/Properties/ServiceDependencies/wordle-server-dev - Zip Deploy
 /wordle-server/Properties/serviceDependencies.json
 /wordle-server/Properties/serviceDependencies.wordle-server-dev - Zip Deploy.json
+/wordle-server/Properties/serviceDependencies.wordle - Zip Deploy.json
+/wordle-server/Properties/ServiceDependencies/wordle - Zip Deploy/storage1.arm.json
+/wordle-server/Properties/ServiceDependencies/wordle - Zip Deploy/appInsights1.arm.json
+/wordle-server/Properties/serviceDependencies.json
