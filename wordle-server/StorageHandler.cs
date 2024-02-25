@@ -15,10 +15,10 @@ namespace wordle_server
     public static class StorageHandler
     {
         static readonly string connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-        static readonly string tableName = "sessions";
-        static readonly string containerName = "words";
-        static readonly string validWordsStorageName = "valid-wordle-words.txt";
-        static readonly string possibleAnswersStorageName = "answerlist.txt";
+        static readonly string tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
+        static readonly string containerName = Environment.GetEnvironmentVariable("BLOB_CONTAINER_NAME");
+        static readonly string validWordsStorageName = Environment.GetEnvironmentVariable("VALID_WORDS_BLOB");
+        static readonly string possibleAnswersStorageName = Environment.GetEnvironmentVariable("ANSWERS_BLOB");
 
         public static CloudTable GetTable(string tableName)
         {
@@ -57,7 +57,7 @@ namespace wordle_server
             TableOperation retrieveOperation = TableOperation.Retrieve<SessionEntity>(id, id);
             TableResult result = await table.ExecuteAsync(retrieveOperation);
             SessionEntity entity = (SessionEntity)result.Result;
-            return entity.Word;
+            return entity.Answer;
         }
         public static async Task StoreSession(string id)
         {
@@ -69,13 +69,13 @@ namespace wordle_server
 
             Random rnd = new Random();
             int i = rnd.Next(0, words.Length);
-            string word = words[i];
+            string answer = words[i];
 
             SessionEntity entity = new SessionEntity
             {
                 PartitionKey = id,
                 RowKey = id,
-                Word = word,
+                Answer = answer,
             };
 
             TableOperation insertOperation = TableOperation.Insert(entity);
@@ -83,7 +83,7 @@ namespace wordle_server
         }
         public class SessionEntity : TableEntity
         {
-            public string Word { get; set; }
+            public string Answer { get; set; }
         }
     }
 }

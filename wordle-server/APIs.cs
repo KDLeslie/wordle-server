@@ -25,7 +25,7 @@ namespace wordle_server
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            string guess = new string(data.Word);
+            string guess = new string(data.Guess);
             string answer = await StorageHandler.GetAnswer(data.SessionToken);
 
             return new OkObjectResult(new {colours = Logic.GetFeedBack(guess, answer)});
@@ -49,7 +49,7 @@ namespace wordle_server
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            string guess = new string(data.Word);
+            string guess = new string(data.Guess);
 
             HashSet<string> hashSet = await StorageHandler.GetValidWords();
 
@@ -72,7 +72,7 @@ namespace wordle_server
 
     public class Request
     {
-        public char[] Word { get; set; }
+        public char[] Guess { get; set; }
         public string SessionToken { get; set; }
     }
 }
