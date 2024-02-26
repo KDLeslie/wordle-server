@@ -50,16 +50,33 @@ namespace wordle_server
             return hashSet;
 
         }
-        public static async Task<string> GetAnswer(string id)
+        public static async Task<string> GetAnswer(string userId, string sessionId)
         {
             CloudTable table = GetTable(tableName);
 
-            TableOperation retrieveOperation = TableOperation.Retrieve<SessionEntity>(id, id);
+            TableOperation retrieveOperation = TableOperation.Retrieve<SessionEntity>(userId, sessionId);
             TableResult result = await table.ExecuteAsync(retrieveOperation);
             SessionEntity entity = (SessionEntity)result.Result;
             return entity.Answer;
         }
-        public static async Task StoreSession(string id)
+        public static async Task<string> GetScore(string userId)
+        {
+            CloudTable table = GetTable(tableName);
+
+            TableOperation retrieveOperation = TableOperation.Retrieve<ScoreEntity>(userId, userId);
+            TableResult result = await table.ExecuteAsync(retrieveOperation);
+
+            if (result.Result != null)
+            {
+                ScoreEntity entity = (ScoreEntity)result.Result;
+                return entity.Score;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        public static async Task StoreSession(string userId, string sessionId)
         {
             CloudBlockBlob blob = GetBlockBlob(containerName, possibleAnswersStorageName);
             CloudTable table = await GetOrCreateTable(tableName);
@@ -73,17 +90,61 @@ namespace wordle_server
 
             SessionEntity entity = new SessionEntity
             {
-                PartitionKey = id,
-                RowKey = id,
-                Answer = answer,
+                PartitionKey = userId,
+                RowKey = sessionId,
+                Answer = answer
             };
 
             TableOperation insertOperation = TableOperation.Insert(entity);
             await table.ExecuteAsync(insertOperation);
+
+            if (await GetScore(userId) == null)
+            {
+                await SetScore(userId, "0");
+            }
+        }
+        public static async Task SetScore(string userId, string score)
+        {
+
+            CloudTable table = await GetOrCreateTable(tableName);
+
+            ScoreEntity entity = new ScoreEntity
+            {
+                PartitionKey = userId,
+                RowKey = userId,
+                Score = score
+            };
+
+            TableOperation retrieveOperation = TableOperation.Retrieve<ScoreEntity>(userId, userId);
+            TableResult result = await table.ExecuteAsync(retrieveOperation);
+            ScoreEntity existingEntity = (ScoreEntity)result.Result;
+
+            if (existingEntity != null)
+            {
+                entity.ETag = existingEntity.ETag;
+                TableOperation replaceOperation = TableOperation.Replace(entity);
+                await table.ExecuteAsync(replaceOperation);
+            }
+            else
+            {
+                TableOperation insertOperation = TableOperation.Insert(entity);
+                await table.ExecuteAsync(insertOperation);
+            }
+        }
+        public static async Task<string> IncrementScore(string userId)
+        {
+            int score = Int32.Parse(await GetScore(userId));
+            score++;
+            await SetScore(userId, score.ToString());
+            return score.ToString();
         }
         public class SessionEntity : TableEntity
         {
             public string Answer { get; set; }
+        }
+        public class ScoreEntity : TableEntity
+        {
+            public string Score { get; set; }
         }
     }
 }

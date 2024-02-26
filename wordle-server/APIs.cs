@@ -23,10 +23,11 @@ namespace wordle_server
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
+            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
             string guess = new string(data.Guess);
-            string answer = await StorageHandler.GetAnswer(data.SessionToken);
+            string answer = await StorageHandler.GetAnswer(userId, data.SessionToken);
 
             return new OkObjectResult(new {colours = Logic.GetFeedBack(guess, answer)});
         }
@@ -36,10 +37,11 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
+            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
 
-            return new OkObjectResult(new {word = await StorageHandler.GetAnswer(data.SessionToken)});
+            return new OkObjectResult(new {word = await StorageHandler.GetAnswer(userId, data.SessionToken)});
         }
 
         [FunctionName("ValidateGuess")]
@@ -56,17 +58,44 @@ namespace wordle_server
             return new OkObjectResult(new {valid = hashSet.Contains(guess)});
         }
 
-
         [FunctionName("SetSession")]
         public static async Task<IActionResult> RunSetSession(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
+            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            await StorageHandler.StoreSession(data.SessionToken);
+            await StorageHandler.StoreSession(userId, data.SessionToken);
 
             return new OkObjectResult(new {success = true});
+        }
+
+        [FunctionName("GetGUID")]
+        public static async Task<IActionResult> RunGetGUID(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            return new OkObjectResult(new {guid = System.Guid.NewGuid().ToString()});
+        }
+
+        [FunctionName("IncrementScore")]
+        public static async Task<IActionResult> RunIncrementScore(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            string userId = req.Cookies["userId"];
+            string score = await StorageHandler.IncrementScore(userId);
+            return new OkObjectResult(new {score});
+        }
+        [FunctionName("GetScore")]
+        public static async Task<IActionResult> RunGetScore(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            string userId = req.Cookies["userId"];
+            string score = await StorageHandler.GetScore(userId) ?? "0";
+            return new OkObjectResult(new {score});
         }
     }
 
