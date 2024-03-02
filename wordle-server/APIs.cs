@@ -79,22 +79,33 @@ namespace wordle_server
             return new OkObjectResult(new {guid = System.Guid.NewGuid().ToString()});
         }
 
-        [FunctionName("IncrementScore")]
-        public static async Task<IActionResult> RunIncrementScore(
+        [FunctionName("IncrementNumerator")]
+        public static async Task<IActionResult> RunIncrementNumerator(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
             string userId = req.Cookies["userId"];
-            string score = await StorageHandler.IncrementScore(userId);
+            string score = await StorageHandler.IncrementNumerator(userId);
             return new OkObjectResult(new {score});
         }
-        [FunctionName("GetScore")]
-        public static async Task<IActionResult> RunGetScore(
+
+        [FunctionName("IncrementDenominator")]
+        public static async Task<IActionResult> RunIncrementDenominator(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            string userId = req.Cookies["userId"];
+            string score = await StorageHandler.IncrementDenominator(userId);
+            return new OkObjectResult(new { score });
+        }
+
+        [FunctionName("GetRatio")]
+        public static async Task<IActionResult> RunGetRatio(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
             string userId = req.Cookies["userId"];
-            string score = await StorageHandler.GetScore(userId) ?? "0";
+            string score = await StorageHandler.GetRatio(userId) ?? "0/0";
             return new OkObjectResult(new {score});
         }
     }

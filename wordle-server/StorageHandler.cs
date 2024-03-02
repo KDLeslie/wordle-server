@@ -59,7 +59,7 @@ namespace wordle_server
             SessionEntity entity = (SessionEntity)result.Result;
             return entity.Answer;
         }
-        public static async Task<string> GetScore(string userId)
+        public static async Task<string> GetRatio(string userId)
         {
             CloudTable table = GetTable(tableName);
 
@@ -98,9 +98,11 @@ namespace wordle_server
             TableOperation insertOperation = TableOperation.Insert(entity);
             await table.ExecuteAsync(insertOperation);
 
-            if (await GetScore(userId) == null)
+
+
+            if (await GetRatio(userId) == null)
             {
-                await SetScore(userId, "0");
+                await SetScore(userId, "0/0");
             }
         }
         public static async Task SetScore(string userId, string score)
@@ -131,11 +133,24 @@ namespace wordle_server
                 await table.ExecuteAsync(insertOperation);
             }
         }
-        public static async Task<string> IncrementScore(string userId)
+        public static async Task<string> IncrementNumerator(string userId)
         {
-            int score = Int32.Parse(await GetScore(userId));
-            score++;
-            await SetScore(userId, score.ToString());
+            string ratio = await GetRatio(userId);
+            int num = Int32.Parse(ratio.Split('/')[0]);
+            int denum = Int32.Parse(ratio.Split('/')[1]);
+            num++;
+            string score = $"{num}/{denum}";
+            await SetScore(userId, score);
+            return score.ToString();
+        }
+        public static async Task<string> IncrementDenominator(string userId)
+        {
+            string ratio = await GetRatio(userId);
+            int num = Int32.Parse(ratio.Split('/')[0]);
+            int denum = Int32.Parse(ratio.Split('/')[1]);
+            denum++;
+            string score = $"{num}/{denum}";
+            await SetScore(userId, score);
             return score.ToString();
         }
         public class SessionEntity : TableEntity
