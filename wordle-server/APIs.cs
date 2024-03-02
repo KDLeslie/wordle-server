@@ -29,6 +29,10 @@ namespace wordle_server
             string guess = new string(data.Guess);
             string answer = await StorageHandler.GetAnswer(userId, data.SessionToken);
 
+            #if DEBUG
+            log.LogInformation(answer);
+            #endif
+
             return new OkObjectResult(new {colours = Logic.GetFeedBack(guess, answer)});
         }
 
