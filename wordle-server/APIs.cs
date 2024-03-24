@@ -26,6 +26,10 @@ namespace wordle_server
             string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            if (data.Email != null)
+            {
+                userId = data.Email;
+            }
             string guess = new string(data.Guess);
             string answer = await StorageHandler.GetAnswer(userId, data.SessionToken);
 
@@ -44,6 +48,10 @@ namespace wordle_server
             string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            if (data.Email != null)
+            {
+                userId = data.Email;
+            }
 
             return new OkObjectResult(new {word = await StorageHandler.GetAnswer(userId, data.SessionToken)});
         }
@@ -70,6 +78,10 @@ namespace wordle_server
             string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            if(data.Email != null) 
+            {
+                userId = data.Email;
+            }
             await StorageHandler.StoreSession(userId, data.SessionToken);
 
             return new OkObjectResult(new {success = true});
@@ -89,6 +101,12 @@ namespace wordle_server
         ILogger log)
         {
             string userId = req.Cookies["userId"];
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            if (data.Email != null)
+            {
+                userId = data.Email;
+            }
             string score = await StorageHandler.IncrementNumerator(userId);
             return new OkObjectResult(new {score});
         }
@@ -99,18 +117,38 @@ namespace wordle_server
         ILogger log)
         {
             string userId = req.Cookies["userId"];
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            if (data.Email != null)
+            {
+                userId = data.Email;
+            }
             string score = await StorageHandler.IncrementDenominator(userId);
             return new OkObjectResult(new { score });
         }
 
         [FunctionName("GetRatio")]
         public static async Task<IActionResult> RunGetRatio(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
             string userId = req.Cookies["userId"];
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            if (data.Email != null)
+            {
+                userId = data.Email;
+            }
             string score = await StorageHandler.GetRatio(userId) ?? "0/0";
             return new OkObjectResult(new {score});
+        }
+        [FunctionName("GetGoogleClientID")]
+        public static async Task<IActionResult> RunGetGoogleClientID(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            string clientID = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID");
+            return new OkObjectResult(new { clientID });
         }
     }
 
@@ -118,5 +156,6 @@ namespace wordle_server
     {
         public char[] Guess { get; set; }
         public string SessionToken { get; set; }
+        public string Email { get; set; }
     }
 }
