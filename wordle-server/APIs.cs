@@ -23,13 +23,13 @@ namespace wordle_server
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            if (data.Email != null)
-            {
-                userId = data.Email;
-            }
+            string userId = data.Email; 
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
             string guess = new string(data.Guess);
             string answer = await StorageHandler.GetAnswer(userId, data.SessionToken);
 
@@ -45,13 +45,13 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            if (data.Email != null)
-            {
-                userId = data.Email;
-            }
+            string userId = data.Email;
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
 
             return new OkObjectResult(new {word = await StorageHandler.GetAnswer(userId, data.SessionToken)});
         }
@@ -75,13 +75,13 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            if(data.Email != null) 
-            {
-                userId = data.Email;
-            }
+            string userId = data.Email; 
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
             await StorageHandler.StoreSession(userId, data.SessionToken);
 
             return new OkObjectResult(new {success = true});
@@ -100,13 +100,14 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            if (data.Email != null)
-            {
-                userId = data.Email;
-            }
+            string userId = data.Email;
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
+
             string score = await StorageHandler.IncrementNumerator(userId);
             return new OkObjectResult(new {score});
         }
@@ -116,13 +117,14 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            if (data.Email != null)
-            {
-                userId = data.Email;
-            }
+            string userId = data.Email;
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
+
             string score = await StorageHandler.IncrementDenominator(userId);
             return new OkObjectResult(new { score });
         }
@@ -132,13 +134,13 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string userId = req.Cookies["userId"];
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            if (data.Email != null)
-            {
-                userId = data.Email;
-            }
+            string userId = data.Email;
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
             string score = await StorageHandler.GetRatio(userId) ?? "0/0";
             return new OkObjectResult(new {score});
         }
