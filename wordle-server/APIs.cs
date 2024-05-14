@@ -137,11 +137,15 @@ namespace wordle_server
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
             string userId = data.Email;
+            string score;
             if (data.Email == null)
                 userId = req.Cookies["userId"];
             if (userId == null)
-                return new BadRequestObjectResult("Null user ID.");
-            string score = await StorageHandler.GetRatio(userId) ?? "0/0";
+            {
+                score = "0/0";
+                return new OkObjectResult(new { score });
+            }
+            score = await StorageHandler.GetRatio(userId) ?? "0/0";
             return new OkObjectResult(new {score});
         }
         [FunctionName("GetGoogleClientID")]
