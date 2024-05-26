@@ -10,11 +10,8 @@ namespace wordle_server
     {
         public static string[] GetFeedBack(string guess, string answer)
         {
-            string[] colours = new string[5];
             if (guess == answer)
-            {
                 return  new string[5] { "green", "green", "green", "green", "green" };
-            }
 
             // Keep track of letters in the answer that have and have not been guessed correctly
             Dictionary<char, int> lettersLeft = new Dictionary<char, int>();
@@ -26,6 +23,7 @@ namespace wordle_server
                     lettersLeft[letter]++;
             }
 
+            string[] colours = new string[5];
             for (int i = 0; i < 5; i++)
             {
                 if (guess[i] == answer[i])
@@ -45,7 +43,7 @@ namespace wordle_server
             }
 
             // Hack to fix bug where yellows should be grey if a duplicate letter is alredy in corrrect spot
-            // (ex: guessing harsh when answer is flush had the first letter be ? and not x)
+            // (ex: guessing harsh when answer is flush had the first letter be yellow and not grey)
             for (int i = 0; i < 5; i++)
             {
                 if (lettersLeft.ContainsKey(guess[i]) && lettersLeft[guess[i]] < 0)

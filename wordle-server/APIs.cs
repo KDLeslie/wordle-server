@@ -30,14 +30,15 @@ namespace wordle_server
                 userId = req.Cookies["userId"];
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
+
             string guess = new string(data.Guess);
             string answer = await StorageHandler.GetAnswer(userId, data.SessionToken);
 
             #if DEBUG
             log.LogInformation(answer);
             #endif
-
-            return new OkObjectResult(new {colours = Logic.GetFeedBack(guess, answer)});
+            string[] colours = Logic.GetFeedBack(guess, answer);
+            return new OkObjectResult(new { colours });
         }
 
         [FunctionName("GetAnswer")]
@@ -53,7 +54,8 @@ namespace wordle_server
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            return new OkObjectResult(new {word = await StorageHandler.GetAnswer(userId, data.SessionToken)});
+            string word = await StorageHandler.GetAnswer(userId, data.SessionToken);
+            return new OkObjectResult(new { word });
         }
 
         [FunctionName("ValidateGuess")]
@@ -66,8 +68,8 @@ namespace wordle_server
             string guess = new string(data.Guess);
 
             HashSet<string> hashSet = await StorageHandler.GetValidWords();
-
-            return new OkObjectResult(new {valid = hashSet.Contains(guess)});
+            bool valid = hashSet.Contains(guess);
+            return new OkObjectResult(new { valid });
         }
 
         [FunctionName("SetSession")]
@@ -82,6 +84,7 @@ namespace wordle_server
                 userId = req.Cookies["userId"];
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
+
             await StorageHandler.StoreSession(userId, data.SessionToken);
 
             return new OkObjectResult(new {success = true});
@@ -92,7 +95,8 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
-            return new OkObjectResult(new {guid = System.Guid.NewGuid().ToString()});
+            string guid = Guid.NewGuid().ToString();
+            return new OkObjectResult(new { guid });
         }
 
         [FunctionName("IncrementNumerator")]
@@ -109,7 +113,7 @@ namespace wordle_server
                 return new BadRequestObjectResult("Null user ID.");
 
             string score = await StorageHandler.IncrementNumerator(userId);
-            return new OkObjectResult(new {score});
+            return new OkObjectResult(new { score });
         }
 
         [FunctionName("IncrementDenominator")]
@@ -137,16 +141,18 @@ namespace wordle_server
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
             string userId = data.Email;
-            string score;
             if (data.Email == null)
                 userId = req.Cookies["userId"];
             if (userId == null)
             {
-                score = "0/0";
+                string score = "0/0";
                 return new OkObjectResult(new { score });
             }
-            score = await StorageHandler.GetRatio(userId) ?? "0/0";
-            return new OkObjectResult(new {score});
+            else
+            {
+                string score = await StorageHandler.GetRatio(userId) ?? "0/0";
+                return new OkObjectResult(new { score });
+            }
         }
         [FunctionName("GetGoogleClientID")]
         public static async Task<IActionResult> RunGetGoogleClientID(

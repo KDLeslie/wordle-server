@@ -26,12 +26,14 @@ namespace wordle_server
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
             return tableClient.GetTableReference(tableName);
         }
+
         public static async Task<CloudTable> GetOrCreateTable(string tableName)
         {
             CloudTable table = GetTable(tableName);
             await table.CreateIfNotExistsAsync();
             return table;
         }
+
         public static CloudBlockBlob GetBlockBlob(string containerName, string blobName) 
         {
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
@@ -48,8 +50,8 @@ namespace wordle_server
             string[] words = blobText.Split(new string[] { "\n" }, StringSplitOptions.None);
             HashSet<string> hashSet = new HashSet<string>(words);
             return hashSet;
-
         }
+
         public static async Task<string> GetAnswer(string userId, string sessionId)
         {
             CloudTable table = GetTable(tableName);
@@ -59,6 +61,7 @@ namespace wordle_server
             SessionEntity entity = (SessionEntity)result.Result;
             return entity.Answer;
         }
+
         public static async Task<string> GetRatio(string userId)
         {
             CloudTable table = GetTable(tableName);
@@ -76,17 +79,24 @@ namespace wordle_server
                 return null;
             }
         }
-        public static async Task StoreSession(string userId, string sessionId)
+
+        public static async Task<string> GetRandomWord()
         {
             CloudBlockBlob blob = GetBlockBlob(containerName, possibleAnswersStorageName);
-            CloudTable table = await GetOrCreateTable(tableName);
 
             string blobText = await blob.DownloadTextAsync();
             string[] words = blobText.Split(new string[] { "\n" }, StringSplitOptions.None);
 
             Random rnd = new Random();
             int i = rnd.Next(0, words.Length);
-            string answer = words[i];
+            return words[i];
+        }
+
+        public static async Task StoreSession(string userId, string sessionId)
+        {
+            CloudTable table = await GetOrCreateTable(tableName);
+
+            string answer = await GetRandomWord();
 
             SessionEntity entity = new SessionEntity
             {
@@ -97,14 +107,8 @@ namespace wordle_server
 
             TableOperation insertOperation = TableOperation.Insert(entity);
             await table.ExecuteAsync(insertOperation);
-
-
-
-            if (await GetRatio(userId) == null)
-            {
-                await SetScore(userId, "0/0");
-            }
         }
+
         public static async Task SetScore(string userId, string score)
         {
 
@@ -133,9 +137,16 @@ namespace wordle_server
                 await table.ExecuteAsync(insertOperation);
             }
         }
+
         public static async Task<string> IncrementNumerator(string userId)
         {
             string ratio = await GetRatio(userId);
+            if (await GetRatio(userId) == null)
+            {
+                await SetScore(userId, "1/0");
+                return "1/0";
+            }
+                
             int num = Int32.Parse(ratio.Split('/')[0]);
             int denum = Int32.Parse(ratio.Split('/')[1]);
             num++;
@@ -143,9 +154,15 @@ namespace wordle_server
             await SetScore(userId, score);
             return score.ToString();
         }
+
         public static async Task<string> IncrementDenominator(string userId)
         {
             string ratio = await GetRatio(userId);
+            if (await GetRatio(userId) == null)
+            {
+                await SetScore(userId, "0/1");
+                return "0/1";
+            }
             int num = Int32.Parse(ratio.Split('/')[0]);
             int denum = Int32.Parse(ratio.Split('/')[1]);
             denum++;
@@ -153,10 +170,12 @@ namespace wordle_server
             await SetScore(userId, score);
             return score.ToString();
         }
+
         public class SessionEntity : TableEntity
         {
             public string Answer { get; set; }
         }
+
         public class ScoreEntity : TableEntity
         {
             public string Score { get; set; }
