@@ -3,38 +3,43 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.ComponentModel;
-using Newtonsoft.Json;
-using System.IO;
 
 namespace wordle_server
 {
-    public static class StorageHandler
+    public interface IBlobDAO
     {
-        static readonly string connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-        static readonly string tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
-        static readonly string containerName = Environment.GetEnvironmentVariable("BLOB_CONTAINER_NAME");
-        static readonly string validWordsStorageName = Environment.GetEnvironmentVariable("VALID_WORDS_BLOB");
-        static readonly string possibleAnswersStorageName = Environment.GetEnvironmentVariable("ANSWERS_BLOB");
+        Task<HashSet<string>> GetValidWordsAsync();
+        Task<string[]> GetPossibleAnswersAsync();
+    }
 
-        public static CloudTable GetTable(string tableName)
+    public class BlobDAO : IBlobDAO
+    {
+        private static readonly string connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+        private static readonly string containerName = Environment.GetEnvironmentVariable("BLOB_CONTAINER_NAME");
+        private static readonly string validWordsStorageName = Environment.GetEnvironmentVariable("VALID_WORDS_BLOB");
+        private static readonly string possibleAnswersStorageName = Environment.GetEnvironmentVariable("ANSWERS_BLOB");
+
+        private readonly Lazy<Task<HashSet<string>>> _lazyValidWords;
+        private readonly Lazy<Task<string[]>> _lazyPossibleAnswers;
+
+        public BlobDAO()
         {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-            return tableClient.GetTableReference(tableName);
+            _lazyValidWords = new Lazy<Task<HashSet<string>>>(() => LoadValidWordsAsync(validWordsStorageName));
+            _lazyPossibleAnswers = new Lazy<Task<string[]>>(() => LoadBlobAsync(possibleAnswersStorageName));
         }
 
-        public static async Task<CloudTable> GetOrCreateTable(string tableName)
+        public Task<HashSet<string>> GetValidWordsAsync()
         {
-            CloudTable table = GetTable(tableName);
-            await table.CreateIfNotExistsAsync();
-            return table;
+            return _lazyValidWords.Value;
         }
 
-        public static CloudBlockBlob GetBlockBlob(string containerName, string blobName) 
+        public Task<string[]> GetPossibleAnswersAsync()
+        {
+            return _lazyPossibleAnswers.Value;
+        }
+
+        private static CloudBlockBlob GetBlockBlob(string containerName, string blobName)
         {
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
@@ -43,87 +48,104 @@ namespace wordle_server
             return blob;
         }
 
-        public static async Task<HashSet<string>> GetValidWords()
+        private static async Task<HashSet<string>> LoadValidWordsAsync(string blobName)
         {
-            CloudBlockBlob blob = GetBlockBlob(containerName, validWordsStorageName);
+            CloudBlockBlob blob = GetBlockBlob(containerName, blobName);
             string blobText = await blob.DownloadTextAsync();
-            string[] words = blobText.Split(new string[] { "\n" }, StringSplitOptions.None);
-            HashSet<string> hashSet = new HashSet<string>(words);
-            return hashSet;
+            var words = new HashSet<string>(blobText.Split(new[] { "\n" }, StringSplitOptions.None));
+            return words;
         }
 
-        public static async Task<string> GetAnswer(string userId, string sessionId)
+        private static async Task<string[]> LoadBlobAsync(string blobName)
         {
-            CloudTable table = GetTable(tableName);
+            CloudBlockBlob blob = GetBlockBlob(containerName, blobName);
+            string blobText = await blob.DownloadTextAsync();
+            return blobText.Split(new[] { "\n" }, StringSplitOptions.None);
+        }
+    }
 
-            TableOperation retrieveOperation = TableOperation.Retrieve<SessionEntity>(userId, sessionId);
-            TableResult result = await table.ExecuteAsync(retrieveOperation);
-            SessionEntity entity = (SessionEntity)result.Result;
-            return entity.Answer;
+    public interface ITableDAO
+    {
+        Task<(string, string)> Get(string partitionKey, string rowKey);
+        Task Insert(string partitionKey, string rowKey, string answer = null, string score = null);
+        Task Update(string partitionKey, string rowKey, string answer = null, string score = null);
+        Task Delete(string partitionKey, string rowKey);
+    }
+    
+    public class TableDAO : ITableDAO
+    {
+        private static readonly string connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+        private static readonly string tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
+
+        private readonly Lazy<Task<CloudTable>> _lazyTable;
+
+        public TableDAO()
+        {
+            _lazyTable = new Lazy<Task<CloudTable>>(() => GetOrCreateTableAsync(tableName));
         }
 
-        public static async Task<string> GetRatio(string userId)
+        public Task<CloudTable> GetTableAsync()
         {
-            CloudTable table = GetTable(tableName);
+            return _lazyTable.Value;
+        }
 
-            TableOperation retrieveOperation = TableOperation.Retrieve<ScoreEntity>(userId, userId);
+        private async Task<CloudTable> GetOrCreateTableAsync(string tableName)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+            CloudTable table = tableClient.GetTableReference(tableName);
+            await table.CreateIfNotExistsAsync();
+            return table;
+        }
+
+        public async Task<(string, string)> Get(string partitionKey, string rowKey)
+        {
+            CloudTable table = await GetTableAsync();
+
+            TableOperation retrieveOperation = TableOperation.Retrieve<Entity>(partitionKey, rowKey);
             TableResult result = await table.ExecuteAsync(retrieveOperation);
 
             if (result.Result != null)
             {
-                ScoreEntity entity = (ScoreEntity)result.Result;
-                return entity.Score;
+                Entity entity = (Entity)result.Result;
+                return (entity.Answer, entity.Score);
             }
             else
             {
-                return null;
+                return (null, null);
             }
         }
 
-        public static async Task<string> GetRandomWord()
+        public async Task Insert(string partitionKey, string rowKey, string answer = null, string score = null)
         {
-            CloudBlockBlob blob = GetBlockBlob(containerName, possibleAnswersStorageName);
+            CloudTable table = await GetTableAsync();
 
-            string blobText = await blob.DownloadTextAsync();
-            string[] words = blobText.Split(new string[] { "\n" }, StringSplitOptions.None);
-
-            Random rnd = new Random();
-            int i = rnd.Next(0, words.Length);
-            return words[i];
-        }
-
-        public static async Task StoreSession(string userId, string sessionId)
-        {
-            CloudTable table = await GetOrCreateTable(tableName);
-
-            string answer = await GetRandomWord();
-
-            SessionEntity entity = new SessionEntity
+            Entity entity = new Entity
             {
-                PartitionKey = userId,
-                RowKey = sessionId,
-                Answer = answer
+                PartitionKey = partitionKey,
+                RowKey = rowKey,
+                Answer = answer,
+                Score = score
             };
-
             TableOperation insertOperation = TableOperation.Insert(entity);
             await table.ExecuteAsync(insertOperation);
         }
 
-        public static async Task SetScore(string userId, string score)
+        public async Task Update(string partitionKey, string rowKey, string answer = null, string score = null)
         {
+            CloudTable table = await GetTableAsync();
 
-            CloudTable table = await GetOrCreateTable(tableName);
-
-            ScoreEntity entity = new ScoreEntity
+            Entity entity = new Entity
             {
-                PartitionKey = userId,
-                RowKey = userId,
+                PartitionKey = partitionKey,
+                RowKey = rowKey,
+                Answer = answer,
                 Score = score
             };
 
-            TableOperation retrieveOperation = TableOperation.Retrieve<ScoreEntity>(userId, userId);
+            TableOperation retrieveOperation = TableOperation.Retrieve<Entity>(partitionKey, rowKey);
             TableResult result = await table.ExecuteAsync(retrieveOperation);
-            ScoreEntity existingEntity = (ScoreEntity)result.Result;
+            Entity existingEntity = (Entity)result.Result;
 
             if (existingEntity != null)
             {
@@ -138,46 +160,22 @@ namespace wordle_server
             }
         }
 
-        public static async Task<string> IncrementNumerator(string userId)
+        public async Task Delete(string partitionKey, string rowKey)
         {
-            string ratio = await GetRatio(userId);
-            if (await GetRatio(userId) == null)
-            {
-                await SetScore(userId, "1/0");
-                return "1/0";
-            }
-                
-            int num = Int32.Parse(ratio.Split('/')[0]);
-            int denum = Int32.Parse(ratio.Split('/')[1]);
-            num++;
-            string score = $"{num}/{denum}";
-            await SetScore(userId, score);
-            return score.ToString();
+            CloudTable table = await GetTableAsync();
+
+            TableOperation retrieveOperation = TableOperation.Retrieve<Entity>(partitionKey, rowKey);
+            TableResult result = await table.ExecuteAsync(retrieveOperation);
+
+            Entity entity = (Entity)result.Result;
+            retrieveOperation = TableOperation.Delete(entity);
+            await table.ExecuteAsync(retrieveOperation);
         }
 
-        public static async Task<string> IncrementDenominator(string userId)
-        {
-            string ratio = await GetRatio(userId);
-            if (await GetRatio(userId) == null)
-            {
-                await SetScore(userId, "0/1");
-                return "0/1";
-            }
-            int num = Int32.Parse(ratio.Split('/')[0]);
-            int denum = Int32.Parse(ratio.Split('/')[1]);
-            denum++;
-            string score = $"{num}/{denum}";
-            await SetScore(userId, score);
-            return score.ToString();
-        }
-
-        public class SessionEntity : TableEntity
+        public class Entity : TableEntity
         {
             public string Answer { get; set; }
-        }
 
-        public class ScoreEntity : TableEntity
-        {
             public string Score { get; set; }
         }
     }

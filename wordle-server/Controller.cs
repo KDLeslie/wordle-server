@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -7,19 +6,24 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage;
-using System.Xml;
-using System.Collections.Generic;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json.Linq;
 
 namespace wordle_server
 {
-    public static class APIs
+    public class APIs
     {
+        private readonly IGameLogicService _gameLogicService;
+        private readonly IStorageService _storageService;
+        private readonly IIdentifierService _identifierService;
+
+        public APIs(IGameLogicService gameLogicService, IStorageService storageService, IIdentifierService identifierService)
+        {
+            _gameLogicService = gameLogicService;
+            _storageService = storageService;
+            _identifierService = identifierService;
+        }
+
         [FunctionName("CheckGuess")]
-        public static async Task<IActionResult> RunCheckGuess(
+        public async Task<IActionResult> RunCheckGuess(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
@@ -32,17 +36,16 @@ namespace wordle_server
                 return new BadRequestObjectResult("Null user ID.");
 
             string guess = new string(data.Guess);
-            string answer = await StorageHandler.GetAnswer(userId, data.SessionToken);
-
             #if DEBUG
-            log.LogInformation(answer);
+            log.LogInformation(await _storageService.GetAnswer(userId, data.SessionToken));
             #endif
-            string[] colours = Logic.GetFeedBack(guess, answer);
+            string[] colours = await _gameLogicService.CheckGuess(userId, data.SessionToken, guess);
+
             return new OkObjectResult(new { colours });
         }
 
         [FunctionName("GetAnswer")]
-        public static async Task<IActionResult> RunGetAnswer(
+        public async Task<IActionResult> RunGetAnswer(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
@@ -54,12 +57,13 @@ namespace wordle_server
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            string word = await StorageHandler.GetAnswer(userId, data.SessionToken);
+            string word = await _storageService.GetAnswer(userId, data.SessionToken);
+
             return new OkObjectResult(new { word });
         }
 
         [FunctionName("ValidateGuess")]
-        public static async Task<IActionResult> RunValidateGuess(
+        public async Task<IActionResult> RunValidateGuess(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
@@ -67,13 +71,13 @@ namespace wordle_server
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
             string guess = new string(data.Guess);
 
-            HashSet<string> hashSet = await StorageHandler.GetValidWords();
-            bool valid = hashSet.Contains(guess);
+            bool valid = await _gameLogicService.ValidateGuess(guess);
+
             return new OkObjectResult(new { valid });
         }
 
         [FunctionName("SetSession")]
-        public static async Task<IActionResult> RunSetSession(
+        public async Task<IActionResult> RunSetSession(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
@@ -85,22 +89,23 @@ namespace wordle_server
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            await StorageHandler.StoreSession(userId, data.SessionToken);
+            await _storageService.SetSession(userId, data.SessionToken);
 
             return new OkObjectResult(new {success = true});
         }
 
         [FunctionName("GetGUID")]
-        public static async Task<IActionResult> RunGetGUID(
+        public async Task<IActionResult> RunGetGUID(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string guid = Guid.NewGuid().ToString();
+
+            string guid = _identifierService.GetGUID();
             return new OkObjectResult(new { guid });
         }
 
         [FunctionName("IncrementNumerator")]
-        public static async Task<IActionResult> RunIncrementNumerator(
+        public async Task<IActionResult> RunIncrementNumerator(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
@@ -112,12 +117,13 @@ namespace wordle_server
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            string score = await StorageHandler.IncrementNumerator(userId);
+            string score = await _storageService.IncrementNumerator(userId);
+
             return new OkObjectResult(new { score });
         }
 
         [FunctionName("IncrementDenominator")]
-        public static async Task<IActionResult> RunIncrementDenominator(
+        public async Task<IActionResult> RunIncrementDenominator(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
@@ -129,12 +135,13 @@ namespace wordle_server
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            string score = await StorageHandler.IncrementDenominator(userId);
+            string score = await _storageService.IncrementDenominator(userId);
+
             return new OkObjectResult(new { score });
         }
 
         [FunctionName("GetRatio")]
-        public static async Task<IActionResult> RunGetRatio(
+        public async Task<IActionResult> RunGetRatio(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
@@ -143,23 +150,20 @@ namespace wordle_server
             string userId = data.Email;
             if (data.Email == null)
                 userId = req.Cookies["userId"];
-            if (userId == null)
-            {
-                string score = "0/0";
-                return new OkObjectResult(new { score });
-            }
-            else
-            {
-                string score = await StorageHandler.GetRatio(userId) ?? "0/0";
-                return new OkObjectResult(new { score });
-            }
+            
+            string score = await _storageService.GetRatio(userId);
+            
+            return new OkObjectResult(new { score });
+            
         }
+
         [FunctionName("GetGoogleClientID")]
-        public static async Task<IActionResult> RunGetGoogleClientID(
+        public async Task<IActionResult> RunGetGoogleClientID(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
-            string clientID = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID");
+            string clientID = _identifierService.GetGoogleClientId();
+
             return new OkObjectResult(new { clientID });
         }
     }
