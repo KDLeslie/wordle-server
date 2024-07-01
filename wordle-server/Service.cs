@@ -93,6 +93,8 @@ namespace wordle_server
 
         Task SetSession(string userId, string sessionId);
 
+        Task RemoveAllSessions(string userId);
+
         Task RemoveSession(string userId, string sessionId);
 
         Task<string> IncrementNumerator(string userId);
@@ -144,6 +146,11 @@ namespace wordle_server
         {
             string answer = await GetRandomWord();
             await _tableDAO.Insert(userId, sessionId, answer);
+        }
+
+        public async Task RemoveAllSessions(string userId)
+        {
+            await _tableDAO.DeleteAll(userId);
         }
 
         public async Task RemoveSession(string userId, string sessionId)

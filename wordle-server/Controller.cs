@@ -94,6 +94,24 @@ namespace wordle_server
             return new OkObjectResult(new {success = true});
         }
 
+        [FunctionName("RemoveAllSessions")]
+        public async Task<IActionResult> EndSetSession(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            Request data = JsonConvert.DeserializeObject<Request>(requestBody);
+            string userId = data.Email;
+            if (data.Email == null)
+                userId = req.Cookies["userId"];
+            if (userId == null)
+                return new BadRequestObjectResult("Null user ID.");
+
+            await _storageService.RemoveAllSessions(userId);
+
+            return new OkObjectResult(new { success = true });
+        }
+
         [FunctionName("GetGUID")]
         public async Task<IActionResult> RunGetGUID(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,

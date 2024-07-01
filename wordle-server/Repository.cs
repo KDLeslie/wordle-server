@@ -70,6 +70,7 @@ namespace wordle_server
         Task Insert(string partitionKey, string rowKey, string answer = null, string score = null);
         Task Update(string partitionKey, string rowKey, string answer = null, string score = null);
         Task Delete(string partitionKey, string rowKey);
+        Task DeleteAll(string partitionKey, bool keepScore = true);
     }
     
     public class TableDAO : ITableDAO
@@ -170,6 +171,30 @@ namespace wordle_server
             Entity entity = (Entity)result.Result;
             retrieveOperation = TableOperation.Delete(entity);
             await table.ExecuteAsync(retrieveOperation);
+        }
+
+        public async Task DeleteAll(string partitionKey, bool keepScore = true)
+        {
+            CloudTable table = await GetTableAsync();
+
+            TableQuery<Entity> query = new TableQuery<Entity>()
+                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partitionKey));
+
+            TableContinuationToken token = null;
+            do
+            {
+                TableQuerySegment<Entity> resultSegment = await table.ExecuteQuerySegmentedAsync(query, token);
+                token = resultSegment.ContinuationToken;
+
+                foreach (Entity entity in resultSegment.Results)
+                {
+                    if (entity.RowKey != partitionKey || !keepScore)
+                    {
+                        TableOperation deleteOperation = TableOperation.Delete(entity);
+                        await table.ExecuteAsync(deleteOperation);
+                    }
+                }
+            } while (token != null);
         }
 
         public class Entity : TableEntity
