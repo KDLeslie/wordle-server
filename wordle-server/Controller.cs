@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace wordle_server
 {
@@ -94,20 +95,24 @@ namespace wordle_server
             return new OkObjectResult(new {success = true});
         }
 
-        [FunctionName("RemoveAllSessions")]
-        public async Task<IActionResult> EndSetSession(
+        [FunctionName("RemoveSessions")]
+        public async Task<IActionResult> RunRemoveSessions(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
         ILogger log)
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            string userId = data.Email;
-            if (data.Email == null)
-                userId = req.Cookies["userId"];
+            string userId = req.Cookies["userId"];
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            await _storageService.RemoveAllSessions(userId);
+            foreach (var session in data.Sessions)
+            {
+                if (session.Value == null)
+                    await _storageService.RemoveSession(userId, session.Key);
+                else
+                    await _storageService.RemoveSession(session.Value, session.Key);
+            }
 
             return new OkObjectResult(new { success = true });
         }
@@ -191,5 +196,6 @@ namespace wordle_server
         public char[] Guess { get; set; }
         public string SessionToken { get; set; }
         public string Email { get; set; }
+        public Dictionary<string, string> Sessions { get; set; }
     }
 }
