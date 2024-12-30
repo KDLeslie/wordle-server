@@ -16,8 +16,8 @@ namespace wordle_server
 
     public class GameLogicService : IGameLogicService
     {
-        IStorageService _storageService;
-        IBlobDAO _blobDAO;
+        readonly IStorageService _storageService;
+        readonly IBlobDAO _blobDAO;
 
         public GameLogicService(IStorageService storageService, IBlobDAO blobDAO)
         {
@@ -104,8 +104,8 @@ namespace wordle_server
 
     public class StorageService : IStorageService
     {
-        IBlobDAO _blobDAO;
-        ITableDAO _tableDAO;
+        readonly IBlobDAO _blobDAO;
+        readonly ITableDAO _tableDAO;
 
         public StorageService(IBlobDAO blobDAO, ITableDAO tableDAO, ILogger logger)
         {
@@ -131,14 +131,14 @@ namespace wordle_server
             }
             else
             {
-                (string answer, string score) = await _tableDAO.Get(userId, userId);
+                (_, string score) = await _tableDAO.Get(userId, userId);
                 return score ?? "0/0";
             }
         }
 
         public async Task<string> GetAnswer(string userId, string sessionId)
         {
-            (string answer, string score) = await _tableDAO.Get(userId, sessionId);
+            (string answer, _) = await _tableDAO.Get(userId, sessionId);
             return answer;
         }
 
