@@ -121,7 +121,7 @@ namespace wordle_server
         {
             CloudTable table = await GetTableAsync();
 
-            Entity entity = new Entity
+            Entity entity = new()
             {
                 PartitionKey = partitionKey,
                 RowKey = rowKey,
@@ -136,7 +136,7 @@ namespace wordle_server
         {
             CloudTable table = await GetTableAsync();
 
-            Entity entity = new Entity
+            Entity entity = new()
             {
                 PartitionKey = partitionKey,
                 RowKey = rowKey,

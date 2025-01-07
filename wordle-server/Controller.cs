@@ -36,7 +36,7 @@ namespace wordle_server
             if (userId == null)
                 return new BadRequestObjectResult("Null user ID.");
 
-            string guess = new string(data.Guess);
+            string guess = new(data.Guess);
             #if DEBUG
             log.LogInformation(await _storageService.GetAnswer(userId, data.SessionToken));
             #endif
@@ -70,7 +70,7 @@ namespace wordle_server
         {
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             Request data = JsonConvert.DeserializeObject<Request>(requestBody);
-            string guess = new string(data.Guess);
+            string guess = new(data.Guess);
 
             bool valid = await _gameLogicService.ValidateGuess(guess);
 
@@ -92,7 +92,7 @@ namespace wordle_server
 
             await _storageService.SetSession(userId, data.SessionToken);
 
-            return new OkObjectResult(new {success = true});
+            return new OkObjectResult(new { success = true });
         }
 
         [FunctionName("RemoveSessions")]
@@ -122,7 +122,6 @@ namespace wordle_server
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
         ILogger log)
         {
-
             string guid = _identifierService.GetGUID();
             return new OkObjectResult(new { guid });
         }

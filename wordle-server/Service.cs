@@ -37,7 +37,7 @@ namespace wordle_server
                 return new string[5] { "green", "green", "green", "green", "green" };
 
             // Keep track of letters in the answer that have and have not been guessed correctly
-            Dictionary<char, int> lettersLeft = new Dictionary<char, int>();
+            Dictionary<char, int> lettersLeft = new();
             foreach (char letter in answer)
             {
                 if (!lettersLeft.ContainsKey(letter))
@@ -107,7 +107,7 @@ namespace wordle_server
         readonly IBlobDAO _blobDAO;
         readonly ITableDAO _tableDAO;
 
-        public StorageService(IBlobDAO blobDAO, ITableDAO tableDAO, ILogger logger)
+        public StorageService(IBlobDAO blobDAO, ITableDAO tableDAO)
         {
             _blobDAO = blobDAO;
             _tableDAO = tableDAO;
@@ -117,7 +117,7 @@ namespace wordle_server
         {
             string[] words = await _blobDAO.GetPossibleAnswersAsync();
 
-            Random rnd = new Random();
+            Random rnd = new();
             int i = rnd.Next(0, words.Length);
             return words[i];
         }
@@ -167,10 +167,10 @@ namespace wordle_server
                 return "1/0";
             }
 
-            int num = Int32.Parse(ratio.Split('/')[0]);
-            int denum = Int32.Parse(ratio.Split('/')[1]);
+            int num = int.Parse(ratio.Split('/')[0]);
+            int denom = int.Parse(ratio.Split('/')[1]);
             num++;
-            string score = $"{num}/{denum}";
+            string score = $"{num}/{denom}";
             await _tableDAO.Update(userId, userId, score : score);
             return score;
         }
@@ -184,8 +184,8 @@ namespace wordle_server
                 return "0/1";
             }
 
-            int num = Int32.Parse(ratio.Split('/')[0]);
-            int denum = Int32.Parse(ratio.Split('/')[1]);
+            int num = int.Parse(ratio.Split('/')[0]);
+            int denum = int.Parse(ratio.Split('/')[1]);
             denum++;
             string score = $"{num}/{denum}";
             await _tableDAO.Update(userId, userId, score : score);
